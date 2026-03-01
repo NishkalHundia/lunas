@@ -1,3 +1,5 @@
-./luna.db
-./luna.db-shm
-./luna.db-wal
+luna.db
+luna.db-shm
+luna.db-wal
+__pycache__/
+*.pyc
