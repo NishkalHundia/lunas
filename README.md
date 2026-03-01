@@ -127,16 +127,42 @@ State highlights:
 
 Implemented in `backend/services/embedding_engine.py`.
 
-Pipeline:
+Training combines metadata priors + implicit-feedback ranking:
 
-1. Build cold-start priors for users and venues from metadata:
-  - category, cuisine tags, vibe tags, price level, time-slot preferences, archetype
-2. Initialize latent factors around priors.
-3. Train with implicit feedback using BPR-style pairwise ranking updates:
-  - positives from weighted interactions
-  - sampled negatives from unobserved venues
-4. Apply regularization and periodic prior blending.
-5. Persist vectors and concept metadata.
+1. Build deterministic feature vectors from metadata keys via hashed random projections (`_feature_vector`):
+  - venue: category, cuisine tags, vibe tags, price
+  - user: cuisine preferences, vibe preferences, price preference, preferred time slots, archetype
+2. Create cold-start priors:
+  - `venue_prior(venue)`: weighted average of venue feature vectors
+  - `user_prior(user)`: weighted average of user feature vectors
+3. Initialize latent factors near priors with Gaussian noise.
+4. Build implicit training tuples from interactions:
+  - positives from actions with positive weights (`save`, `checkin`, `intent`, etc.)
+  - negatives from explicit negative signals (`invite_decline`, `unsave`)
+  - recency decay + duration boost applied in `_iter_training_events`
+5. Run BPR-style pairwise optimization:
+  - sample negative item for each positive `(user, positive_venue)`
+  - maximize the margin between positive and negative item scores with sigmoid loss
+  - apply L2-like regularization
+6. Blend learned vectors back toward priors each epoch (stability/cold-start robustness).
+7. Persist vectors and compute explainability concept centroids/profiles.
+
+```mermaid
+flowchart TD
+  A[Interactions + Metadata] --> B[Build User/Venue Priors]
+  B --> C[Initialize Latent Factors]
+  C --> D[Construct Positive/Negative Samples]
+  D --> E[BPR Pairwise Updates]
+  E --> F[Regularize + Prior Blending]
+  F --> G[Persist Embeddings]
+  G --> H[Compute Concept Centroids]
+  H --> I[Refresh User/Venue Explainability Profiles]
+```
+
+Optimization intuition:
+- Positive event: push user vector closer to that venue.
+- Negative event: push user vector away from that venue.
+- Prior blending prevents drift into unstable latent regions when data is sparse.
 
 Current defaults (from `backend/config.py`):
 
@@ -149,29 +175,77 @@ Current defaults (from `backend/config.py`):
 
 Triggered on interactions and bookings.
 
-Mechanism:
+For each event, `online_update` runs:
 
-- fetch current user vector `u_old` and venue vector `v`
-- compute `alpha = ONLINE_UPDATE_ALPHA * abs(weight)`
-- positive interactions pull user toward venue
-- negative interactions push user away
-- update `embedding_meta` with:
-  - `latest_drift`
-  - `concept_changes`
-  - updated narrative
+1. Load user vector `u_old` and venue vector `v` (fallback to prior if needed).
+2. Convert event type to signed magnitude using `ONLINE_WEIGHTS`.
+3. Compute step size:
+   - `alpha = ONLINE_UPDATE_ALPHA * abs(weight)`
+4. Update rule:
+   - positive event: `u_new = norm((1 - alpha) * u_old + alpha * v)`
+   - negative event: `u_new = norm((1 + alpha) * u_old - alpha * v)`
+5. Recompute concept activations and deltas.
+6. Persist:
+   - `embedding_vector`
+   - `embedding_updated_at`
+   - `embedding_meta.latest_drift`
+   - `embedding_meta.concept_changes`
+   - narrative summary
 
 This is what makes recommendation behavior visibly change after bookings/interactions.
 
+```mermaid
+flowchart LR
+  E[User Event] --> W[Lookup Event Weight]
+  W --> U[Load u_old + venue v]
+  U --> R[Apply Signed Update Rule]
+  R --> N[Normalize to u_new]
+  N --> X[Recompute Concept Profile]
+  X --> M[Store Drift + Concept Changes]
+```
+
 ### 5.3 Explainability Layer
 
-Concept decomposition:
+Explainability is concept-centric and deterministic.
 
-- concept centroids are computed from venue clusters and feature vectors
-- user/venue vectors are projected onto concept centroids
-- top activations produce:
-  - concept labels
-  - normalized strengths
-  - recommendation narratives and reasons
+How concept vectors are built:
+
+1. For each concept in `CONCEPT_CATALOG`:
+   - select venues matching concept constraints (category/vibe/cuisine/price)
+2. If enough matched venues exist:
+   - centroid = normalized mean of matched venue embeddings
+3. Otherwise:
+   - fallback centroid from concept feature vectors (cold-start-safe)
+
+How profile activations are computed:
+
+1. Compute cosine similarity between target vector and each concept centroid.
+2. Standardize similarities (`mean/std`) and sharpen.
+3. Keep top concepts and normalize to a probability-like distribution.
+
+How recommendation reasons are produced:
+
+1. Build user concept map and venue concept map.
+2. For shared concepts, compute contribution:
+   - `contribution = user_activation * venue_activation`
+3. Rank top contributors and generate:
+   - reason chips (labels + strengths)
+   - narrative sentence for UI
+
+```mermaid
+flowchart TD
+  A[User Embedding] --> C[Concept Projection]
+  B[Venue Embedding] --> C
+  C --> D[Top Concept Activations]
+  D --> E[Shared Concepts]
+  E --> F[Contribution Ranking]
+  F --> G[Reason Chips + Narrative]
+```
+
+UI outputs backed by this layer:
+- `Taste Lab` top concepts and profile narrative
+- recommendation reason chips
+- recent concept up/down deltas after interactions/bookings
 
 ### 5.4 Venue Recommendation Score
 
@@ -457,4 +531,3 @@ Recommended next steps:
 - Postgres migration and indexing strategy for scale
 - A/B testing framework for recommendation weights
 - stricter auth/session management and role controls
-
