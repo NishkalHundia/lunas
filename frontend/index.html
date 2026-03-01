@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luna Social - Meetup Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#081019;--bg2:#0f1f30;--card:#112234cc;--line:#7da4c433;--line2:#9bc6eb66;--text:#edf5fc;--muted:#a9bed2;--dim:#7c90a6;--a:#22d3ee;--b:#ff7a18;--c:#ffd166;--g:#34d399;--r:#fb7185;--radius:16px;--shadow:0 24px 60px #050b1266}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Space Grotesk",sans-serif;color:var(--text);background:radial-gradient(circle at 12% 8%,#22d3ee26,transparent 35%),radial-gradient(circle at 84% 12%,#ff7a1822,transparent 30%),linear-gradient(140deg,#070d14,#0b1421 45%,#09121b);min-height:100vh}
+    .shell{width:min(1320px,95vw);margin:24px auto 40px}
+    .top{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:14px}
+    .brand{font-family:"Sora",sans-serif;font-size:30px;font-weight:800;letter-spacing:-.04em}
+    .brand::after{content:"";display:block;width:58px;height:4px;border-radius:999px;margin-top:4px;background:linear-gradient(90deg,var(--a),var(--b))}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .ctl{height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:0 12px;font-size:13px;font-family:"Space Grotesk",sans-serif;font-weight:500;line-height:1.2;outline:none;appearance:none;-webkit-appearance:none}
+    .ctl:focus{border-color:var(--line2)}
+    .ctl::placeholder{color:var(--dim)}
+    .search-wrap{position:relative;min-width:220px;max-width:360px;flex:1}
+    .search-wrap .ctl{width:100%}
+    .search-results{position:absolute;top:44px;left:0;right:0;border:1px solid var(--line2);border-radius:10px;background:#0f1f30f2;box-shadow:var(--shadow);max-height:320px;overflow:auto;display:none;z-index:80}
+    .search-results.open{display:block}
+    .sr-head{padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line)}
+    .sr-item{padding:10px;border-bottom:1px solid var(--line);cursor:pointer}
+    .sr-item:last-child{border-bottom:none}
+    .sr-item:hover{background:#173047d1}
+    .sr-title{font-size:13px;font-weight:700}
+    .sr-meta{font-size:11px;color:var(--dim);margin-top:2px}
+    .chip{border:1px solid var(--line);border-radius:999px;background:#102031cc;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+    .chip strong{color:var(--text);margin-left:6px}
+    .panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+    .nav{display:flex;gap:6px;padding:8px;margin-bottom:12px;overflow-x:auto}
+    .tab{border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted);padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;position:relative}
+    .tab.active{color:#081019;border:none;background:linear-gradient(100deg,var(--a),var(--c),var(--b))}
+    .badge{position:absolute;top:-6px;right:-4px;min-width:17px;height:17px;border-radius:999px;background:var(--r);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;padding:0 4px}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:16px;margin-bottom:12px}
+    .stat{border:1px solid var(--line);border-radius:12px;background:#0e1c2bdd;padding:12px}
+    .val{font-family:"Sora",sans-serif;font-size:24px;font-weight:700}
+    .lbl{margin-top:4px;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+    #content{min-height:460px;padding:18px}
+    .loading{min-height:260px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+    .card{border:1px solid var(--line);border-radius:12px;background:#0e1b2add;padding:14px;animation:rise .25s ease}
+    .card:hover{border-color:var(--line2);transform:translateY(-1px)}
+    .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+    .name{font-family:"Sora",sans-serif;font-size:18px;font-weight:700;letter-spacing:-.02em}
+    .meta{margin-top:2px;font-size:12px;color:var(--dim)}
+    .score{font-family:"Sora",sans-serif;font-size:16px;font-weight:700;color:var(--c)}
+    .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .pill{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;border:1px solid var(--line);border-radius:999px;min-height:22px;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.06em;line-height:1;text-transform:uppercase;color:var(--muted);background:#14283bcc;white-space:nowrap}
+    .pill.ok{border-color:#34d39966;color:#dcfff0;background:#0f402f99}
+    .pill.hot{border-color:#ff7a1866;color:#ffe9d8;background:#4e301b99}
+    .bar{display:flex;align-items:center;gap:8px;margin-top:10px}
+    .bar label{width:72px;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+    .track{flex:1;height:8px;border:1px solid var(--line);border-radius:999px;background:#1a2f4399;overflow:hidden}
+    .fill{height:100%;background:linear-gradient(90deg,var(--a),var(--b));transform-origin:left center;animation:grow .7s ease}
+    .num{width:36px;text-align:right;font-size:11px;color:var(--muted);font-weight:700}
+    .note{margin-top:11px;border:1px solid var(--line);border-radius:10px;background:#132437aa;padding:9px;font-size:12px;color:var(--muted);line-height:1.45}
+    .actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;align-items:center}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;border:1px solid var(--line);border-radius:10px;background:#14283bcc;color:var(--text);padding:0 14px;font-size:10px;font-weight:700;letter-spacing:.08em;line-height:1;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+    .btn:hover{border-color:var(--line2)}
+    .btn.main{background:linear-gradient(100deg,var(--a),var(--c),var(--b));border:none;color:#081019}
+    .btn.good{border-color:#34d39966;background:#10413188;color:#dffef1}
+    .btn.bad{border-color:#fb718566;background:#4d1f2d88;color:#ffe8ee}
+    .section{margin-bottom:16px}
+    .title{font-family:"Sora",sans-serif;font-size:17px;font-weight:700;margin-bottom:6px}
+    .sub{font-size:12px;color:var(--dim);margin-bottom:9px;line-height:1.4}
+    .empty{text-align:center;padding:40px 18px;color:var(--dim);border:1px dashed var(--line);border-radius:12px;background:#0a1624a8}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .taste{display:grid;grid-template-columns:280px 1fr;gap:12px}
+    .avatar{width:74px;height:74px;border-radius:50%;border:2px solid var(--line2)}
+    .modal-wrap{position:fixed;inset:0;background:#050b1299;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:40}
+    .modal{width:min(680px,92vw);max-height:84vh;overflow:auto;border:1px solid var(--line2);border-radius:16px;background:#0f1f30;padding:16px}
+    .picklist{display:grid;gap:7px;max-height:280px;overflow:auto;margin:10px 0}
+    .pick{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border:1px solid var(--line);border-radius:10px;background:#132639c9;padding:9px;cursor:pointer}
+    .pick.selected{border-color:#34d39988;background:#11403166}
+    .pick small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+    .toast{position:fixed;right:18px;bottom:18px;z-index:60;border:1px solid #34d39988;background:#104031dd;color:#e6fff4;padding:10px 12px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:0;transform:translateY(10px);transition:.2s all}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.err{border-color:#fb718599;background:#4f1f2ddd;color:#ffe7ee}
+    @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    @media(max-width:1024px){.top{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.split,.taste{grid-template-columns:1fr}}
+    @media(max-width:640px){#content{padding:12px}.summary{padding:12px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand">Luna</div>
+      <div class="controls">
+        <div class="search-wrap">
+          <input id="search" class="ctl" placeholder="Search venues or people..." autocomplete="off" />
+          <div id="searchResults" class="search-results"></div>
+        </div>
+        <input id="userSearch" class="ctl" placeholder="Find profile..." autocomplete="off" />
+        <select id="user" class="ctl"></select>
+        <input id="date" type="date" class="ctl" />
+        <input id="time" type="time" class="ctl" />
+      </div>
+      <div class="chip">Pending <strong id="pending">0</strong></div>
+    </header>
+
+    <nav class="panel nav" id="nav">
+      <button class="tab active" data-tab="discover">Discover</button>
+      <button class="tab" data-tab="invites">Invites</button>
+      <button class="tab" data-tab="bookings">Bookings</button>
+      <button class="tab" data-tab="friends">Friends</button>
+      <button class="tab" data-tab="taste">Taste Lab</button>
+      <button class="tab" data-tab="trends">Trends</button>
+    </nav>
+
+    <section id="summary" class="panel summary"></section>
+    <main id="content" class="panel"><div class="loading">Loading...</div></main>
+  </div>
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const S={users:[],u:null,tab:"discover",slot:"evening",time:"19:00",date:"",search:"",pending:0};
+    const E={user:document.getElementById("user"),userSearch:document.getElementById("userSearch"),date:document.getElementById("date"),time:document.getElementById("time"),search:document.getElementById("search"),searchResults:document.getElementById("searchResults"),summary:document.getElementById("summary"),content:document.getElementById("content"),nav:document.getElementById("nav"),pending:document.getElementById("pending"),modal:document.getElementById("modalRoot"),toast:document.getElementById("toast")};
+    const q=(s,n=document)=>n.querySelector(s), qa=(s,n=document)=>[...n.querySelectorAll(s)];
+    const API="";
+    const fmtPrice=n=>"$".repeat(Math.max(1,n||1));
+    const stars=n=>{const r=Math.round(n||0);return "★".repeat(r)+"☆".repeat(Math.max(0,5-r));};
+    const today=()=>new Date().toISOString().slice(0,10);
+    function normalizeTime(raw){
+      const value=(raw||"").trim();
+      const parts=value.split(":");
+      if(parts.length!==2 || !/^\d+$/.test(parts[0]) || !/^\d+$/.test(parts[1]))return "19:00";
+      const h=Number(parts[0]), m=Number(parts[1]);
+      if(h<0||h>23||m<0||m>59)return "19:00";
+      return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+    }
+    function slotFromTime(raw){
+      const value=(raw||"").toLowerCase();
+      if(["morning","afternoon","evening","night"].includes(value))return value;
+      const t=normalizeTime(raw);
+      const h=Number(t.split(":")[0]);
+      if(h>=5&&h<12)return "morning";
+      if(h>=12&&h<17)return "afternoon";
+      if(h>=17&&h<21)return "evening";
+      return "night";
+    }
+    function showToast(msg,err=false){E.toast.textContent=msg;E.toast.className="toast"+(err?" err":"");requestAnimationFrame(()=>E.toast.classList.add("show"));setTimeout(()=>E.toast.classList.remove("show"),2500);}
+    async function api(p){const r=await fetch(API+p);if(!r.ok)throw new Error(await r.text()||"Request failed");return r.json();}
+    async function post(p,b){const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});if(!r.ok)throw new Error(await r.text()||"Request failed");return r.json();}
+
+    async function init(){
+      try{
+        S.users=await api("/api/users?limit=1000");
+        if(!S.users.length){E.content.innerHTML='<div class="empty">No users found. Seed the database first.</div>';return;}
+        S.u=S.users[0];
+        renderUserOptions("");
+        E.user.value=S.u.id;E.date.value=today();S.date=E.date.value;E.time.value=normalizeTime(S.time);S.time=E.time.value;S.slot=slotFromTime(S.time);
+        bind();await refreshPending();await render();
+      }catch(e){E.content.innerHTML=`<div class="empty">${e.message}</div>`;}
+    }
+
+    function userLabel(u){return `${u.display_name} - ${u.neighborhood||"Austin"}`;}
+    function filteredUsers(term){
+      const q=(term||"").trim().toLowerCase();
+      if(!q)return [...S.users];
+      return S.users.filter(u=>{
+        const text=[u.display_name,u.username,u.neighborhood,u.archetype].filter(Boolean).join(" ").toLowerCase();
+        return text.includes(q);
+      });
+    }
+    function renderUserOptions(term){
+      const prevId=S.u?.id||E.user.value||"";
+      const rows=filteredUsers(term);
+      E.user.innerHTML="";
+      if(!rows.length){
+        const empty=document.createElement("option");
+        empty.value="";
+        empty.textContent="No profiles found";
+        empty.disabled=true;
+        empty.selected=true;
+        E.user.appendChild(empty);
+        return;
+      }
+      rows.forEach(u=>{
+        const o=document.createElement("option");
+        o.value=u.id;
+        o.textContent=userLabel(u);
+        E.user.appendChild(o);
+      });
+      if(rows.some(u=>u.id===prevId))E.user.value=prevId;
+      else E.user.value=rows[0].id;
+    }
+
+    function bind(){
+      E.user.onchange=async()=>{S.u=S.users.find(x=>x.id===E.user.value)||S.users[0];await refreshPending();await render();};
+      E.userSearch.oninput=()=>{renderUserOptions(E.userSearch.value);};
+      E.userSearch.onkeydown=async(ev)=>{
+        if(ev.key!=="Enter")return;
+        ev.preventDefault();
+        const first=E.user.options[0];
+        if(!first||!first.value)return;
+        E.user.value=first.value;
+        S.u=S.users.find(x=>x.id===E.user.value)||S.users[0];
+        await refreshPending();
+        await render();
+      };
+      E.date.onchange=async()=>{S.date=E.date.value;if(["discover","trends"].includes(S.tab))await render();};
+      E.time.onchange=async()=>{S.time=normalizeTime(E.time.value);E.time.value=S.time;S.slot=slotFromTime(S.time);if(["discover","trends"].includes(S.tab))await render();};
+      let t=null;
+      E.search.oninput=()=>{
+        clearTimeout(t);
+        t=setTimeout(async()=>{
+          S.search=E.search.value.trim().toLowerCase();
+          await renderSearchResults(E.search.value.trim());
+          if(S.tab==="discover")await renderDiscover();
+        },160);
+      };
+
+      E.searchResults.onclick=async(ev)=>{
+        const item=ev.target.closest('.sr-item');
+        if(!item)return;
+        const kind=item.dataset.kind;
+        const id=item.dataset.id;
+        if(kind==='venue'){
+          const name=item.dataset.name||'';
+          E.search.value=name;
+          S.search=name.toLowerCase();
+          closeSearchResults();
+          if(S.tab!=="discover"){
+            S.tab="discover";
+            qa('.tab',E.nav).forEach(x=>x.classList.toggle('active',x.dataset.tab==='discover'));
+          }
+          await renderDiscover();
+          return;
+        }
+        closeSearchResults();
+        await openPersonProfile(id);
+      };
+
+      document.addEventListener('click',(ev)=>{
+        if(!ev.target.closest('.search-wrap'))closeSearchResults();
+      });
+      E.nav.onclick=async(ev)=>{const b=ev.target.closest(".tab");if(!b)return;S.tab=b.dataset.tab;qa(".tab",E.nav).forEach(x=>x.classList.toggle("active",x===b));await render();};
+    }
+
+    async function refreshPending(){
+      try{
+        const rows=await api(`/api/invitations/incoming/${S.u.id}`);
+        S.pending=rows.length;E.pending.textContent=String(S.pending);
+        const tab=q('.tab[data-tab="invites"]',E.nav);let badge=q(".badge",tab);
+        if(S.pending>0){if(!badge){badge=document.createElement("span");badge.className="badge";tab.appendChild(badge);}badge.textContent=S.pending>99?"99+":S.pending;}
+        else if(badge)badge.remove();
+      }catch(_){E.pending.textContent="0";}
+    }
+
+    async function render(){
+      E.content.innerHTML='<div class="loading">Loading...</div>';
+      await renderSummary();
+      if(S.tab==="discover")return renderDiscover();
+      if(S.tab==="invites")return renderInvites();
+      if(S.tab==="bookings")return renderBookings();
+      if(S.tab==="friends")return renderFriends();
+      if(S.tab==="taste")return renderTaste();
+      return renderTrends();
+    }
+
+    async function renderSummary(){
+      const [inv,book,recs]=await Promise.all([api(`/api/invitations/incoming/${S.u.id}`),api(`/api/bookings/user/${S.u.id}`),api(`/api/embeddings/recommend/${S.u.id}?limit=8&time_slot=${S.slot}`)]);
+      const friend=recs.reduce((a,r)=>a+(r.friend_count||0),0), trend=recs.filter(r=>r.trending).length, confirmed=book.filter(b=>b.status==="confirmed").length;
+      E.summary.innerHTML=`
+        <article class="stat"><div class="val">${recs.length}</div><div class="lbl">Personalized Picks</div></article>
+        <article class="stat"><div class="val">${friend}</div><div class="lbl">Friends Nearby</div></article>
+        <article class="stat"><div class="val">${trend}</div><div class="lbl">Trending Spots</div></article>
+        <article class="stat"><div class="val">${confirmed}</div><div class="lbl">Confirmed Plans</div></article>
+      `;
+    }
+
+    function searchFilter(rows){if(!S.search)return rows;return rows.filter(r=>{const v=r.venue||{};const text=[v.name,v.category,v.subcategory,v.neighborhood,...(v.cuisine_tags||[]),...(v.vibe_tags||[])].join(" ").toLowerCase();return text.includes(S.search);});}
+
+    function closeSearchResults(){
+      E.searchResults.classList.remove('open');
+      E.searchResults.innerHTML='';
+    }
+
+    async function renderSearchResults(query){
+      const term=(query||'').trim();
+      if(term.length<2){closeSearchResults();return;}
+      try{
+        const [people,venues]=await Promise.all([
+          api(`/api/users?limit=8&search=${encodeURIComponent(term)}`),
+          api(`/api/venues?limit=8&search=${encodeURIComponent(term)}`)
+        ]);
+        if(!people.length && !venues.length){
+          E.searchResults.innerHTML='<div class="sr-item"><div class="sr-title">No results</div></div>';
+          E.searchResults.classList.add('open');
+          return;
+        }
+        let html='';
+        if(people.length){
+          html+='<div class="sr-head">People</div>';
+          html+=people.map(p=>`<div class="sr-item" data-kind="user" data-id="${p.id}"><div class="sr-title">${p.display_name}</div><div class="sr-meta">@${p.username} ? ${p.neighborhood||'Austin'} ? ${p.archetype||'explorer'}</div></div>`).join('');
+        }
+        if(venues.length){
+          html+='<div class="sr-head">Venues</div>';
+          html+=venues.map(v=>`<div class="sr-item" data-kind="venue" data-id="${v.id}" data-name="${(v.name||'').replace(/"/g,'&quot;')}"><div class="sr-title">${v.name}</div><div class="sr-meta">${v.category} ? ${v.neighborhood||v.city}</div></div>`).join('');
+        }
+        E.searchResults.innerHTML=html;
+        E.searchResults.classList.add('open');
+      }catch(_){
+        closeSearchResults();
+      }
+    }
+
+    async function openPersonProfile(userId){
+      try{
+        const [user,profile,myFriends]=await Promise.all([
+          api(`/api/users/${userId}`),
+          api(`/api/embeddings/taste-profile/${userId}`),
+          api(`/api/users/${S.u.id}/friends`)
+        ]);
+        const isCurrent = user.id===S.u.id;
+        const isFriend = (myFriends||[]).some(f=>f.id===user.id);
+        const conceptChips=(profile.top_concepts||[]).slice(0,6).map(c=>`<span class="pill">${c.label} ${Math.round((c.normalized||0)*100)}%</span>`).join('');
+
+        const wrap=document.createElement('div');
+        wrap.className='modal-wrap';
+        wrap.innerHTML=`<div class="modal">
+          <div class="title">${user.display_name}</div>
+          <div class="sub">@${user.username} ? ${user.neighborhood||'Austin'} ? ${user.archetype||'explorer'} ? age ${user.age}</div>
+          <div class="note">${profile.narrative||'Taste profile details'}</div>
+          <div class="pills">${conceptChips||'<span class="pill">No concepts yet</span>'}</div>
+          <div class="actions" style="margin-top:14px">
+            ${!isCurrent && !isFriend?`<button class="btn good" id="ppAdd">Add Friend</button>`:''}
+            ${!isCurrent && isFriend?`<button class="btn bad" id="ppRemove">Remove Friend</button>`:''}
+            ${!isCurrent?`<button class="btn main" id="ppPlan">Plan Meetup</button>`:''}
+            <button class="btn" id="ppSwitch">View Their Profile</button>
+            <button class="btn" id="ppClose">Close</button>
+          </div>
+        </div>`;
+        E.modal.appendChild(wrap);
+
+        q('#ppClose',wrap).onclick=()=>wrap.remove();
+        wrap.onclick=(ev)=>{if(ev.target===wrap)wrap.remove();};
+
+        const addBtn=q('#ppAdd',wrap);
+        if(addBtn){
+          addBtn.onclick=async()=>{await addFriend(user.id);wrap.remove();};
+        }
+        const removeBtn=q('#ppRemove',wrap);
+        if(removeBtn){
+          removeBtn.onclick=async()=>{await removeFriend(user.id);wrap.remove();};
+        }
+        const planBtn=q('#ppPlan',wrap);
+        if(planBtn){
+          planBtn.onclick=async()=>{wrap.remove();await openInviteForPerson(user.id);};
+        }
+
+        q('#ppSwitch',wrap).onclick=async()=>{
+          let existing=S.users.find(x=>x.id===user.id);
+          if(!existing){
+            existing={id:user.id,display_name:user.display_name,username:user.username,neighborhood:user.neighborhood,archetype:user.archetype,avatar_url:user.avatar_url,age:user.age};
+            S.users.unshift(existing);
+          }
+          renderUserOptions(E.userSearch.value);
+          S.u=existing;
+          E.user.value=existing.id;
+          S.tab='taste';
+          qa('.tab',E.nav).forEach(x=>x.classList.toggle('active',x.dataset.tab==='taste'));
+          wrap.remove();
+          await refreshPending();
+          await render();
+        };
+      }catch(_){
+        showToast('Could not open profile',true);
+      }
+    }
+
+    async function renderDiscover(){
+      if(S.search){
+        const payload = await api(`/api/recommendations/${S.u.id}/search?query=${encodeURIComponent(S.search)}&limit=48&time_slot=${S.slot}`);
+        const rows = payload.results || [];
+        if(!rows.length){E.content.innerHTML='<div class="empty">No venues match your search.</div>';return;}
+        const qText = (E.search.value||S.search||"").trim();
+        const safeQ = qText.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        const semanticNotice = payload.exact_match_found ? "" : `<div class="note" style="margin-bottom:12px">No exact match for "${safeQ}". Showing closest semantic results.</div>`;
+        E.content.innerHTML=`${semanticNotice}<div class="cards">${rows.map(r=>cardVenue(r)).join("")}</div>`;
+        return;
+      }
+      const rows=await api(`/api/embeddings/recommend/${S.u.id}?limit=24&time_slot=${S.slot}`);
+      if(!rows.length){E.content.innerHTML='<div class="empty">No venues match your search.</div>';return;}
+      E.content.innerHTML=`<div class="cards">${rows.map(r=>cardVenue(r)).join("")}</div>`;
+    }
+
+    function bar(label,val){const n=Math.round((val||0)*100);return `<div class="bar"><label>${label}</label><div class="track"><div class="fill" style="width:${n}%"></div></div><div class="num">${n}</div></div>`;}
+    function cardVenue(r){
+      const v=r.venue,x=r.explanation||{},reasons=(x.reasons||[]).slice(0,3).map(z=>`<span class="pill">${z.label}</span>`).join("");
+      return `<article class="card">
+        <div class="row"><div><div class="name">${v.name}</div><div class="meta">${v.category} • ${v.neighborhood||v.city} • ${fmtPrice(v.price_level)} • ${stars(v.avg_rating)}</div></div><div class="score">${Math.round((r.score||0)*100)}%</div></div>
+        <div class="pills">${(v.vibe_tags||[]).slice(0,3).map(t=>`<span class="pill">${t}</span>`).join("")}${(v.cuisine_tags||[]).slice(0,2).map(t=>`<span class="pill hot">${t}</span>`).join("")}${r.trending?'<span class="pill ok">Trending</span>':""}${r.match_type==="semantic"?`<span class="pill hot">Closest ${Math.round((r.query_similarity||0)*100)}%</span>`:""}</div>
+        ${bar("Taste",r.score_breakdown?.embedding)}${bar("Social",r.score_breakdown?.social_proof)}${bar("Trend",r.score_breakdown?.trending)}
+        <div class="note">${x.narrative||"Recommendation from trained taste + social embeddings."}</div>
+        ${reasons?`<div class="pills">${reasons}</div>`:""}
+        <div class="actions">
+          <button class="btn main" onclick="openInvite('${v.id}','${(v.name||"").replace(/'/g,"\\'")}')">Plan Meetup</button>
+          <button class="btn" onclick="bookSolo('${v.id}','${(v.name||"").replace(/'/g,"\\'")}')">Book Solo</button>
+          <button class="btn" onclick="signal('${v.id}')">Save Signal</button>
+        </div>
+      </article>`;
+    }
+
+    async function renderInvites(){
+      const [incoming,outgoing]=await Promise.all([api(`/api/invitations/incoming/${S.u.id}`),api(`/api/invitations/outgoing/${S.u.id}`)]);
+      E.content.innerHTML=`
+        <section class="section"><div class="title">Inbox</div><div class="sub">Accept/decline. Booking happens automatically once all respond and threshold is met.</div>
+          ${incoming.length?incoming.map(i=>`<article class="card">
+            <div class="row"><div><div class="name" style="font-size:15px">${i.from_display_name} invited you to ${i.venue_name}</div><div class="meta">${i.venue_category} • ${i.proposed_time_slot||"time flexible"} • ${i.proposed_date||"flex date"}</div></div><span class="pill hot">${i.group_accepted+1}/${i.group_threshold}</span></div>
+            ${i.message?`<div class="note">"${i.message}"</div>`:""}
+            <div class="actions"><button class="btn good" onclick="respond('${i.id}','accepted')">Accept</button><button class="btn bad" onclick="respond('${i.id}','declined')">Decline</button></div>
+          </article>`).join(""):'<div class="empty">No pending invites.</div>'}
+        </section>
+        <section class="section"><div class="title">Sent Groups</div><div class="sub">Exception groups can be retried or cancelled by organizer.</div>
+          ${outgoing.length?outgoing.map(g=>`<article class="card">
+            <div class="row"><div><div class="name" style="font-size:15px">${g.venue_name}</div><div class="meta">${g.proposed_time_slot||"time flexible"} • ${g.proposed_date||"flex date"} • threshold ${g.threshold_count}</div></div><span class="pill ${g.group_status==="auto_booked"?"ok":g.group_status==="exception"?"hot":""}">${g.group_status}</span></div>
+            <div class="pills"><span class="pill">Accepted ${g.summary.accepted}</span><span class="pill">Declined ${g.summary.declined}</span><span class="pill">Pending ${g.summary.pending}</span></div>
+            <div class="pills">${g.people.map(p=>`<span class="pill ${p.status==="accepted"?"ok":p.status==="declined"?"hot":""}">${p.display_name}: ${p.status}</span>`).join("")}</div>
+            ${g.group_status==="exception"?`<div class="actions"><button class="btn good" onclick="resolve('${g.group_id}','retry')">Retry Auto Booking</button><button class="btn bad" onclick="resolve('${g.group_id}','cancel')">Cancel Group</button></div>`:""}
+          </article>`).join(""):'<div class="empty">No outgoing invite groups.</div>'}
+        </section>
+      `;
+      await refreshPending();
+    }
+
+
+    async function renderFriends(){
+      const [friends,recommended]=await Promise.all([
+        api(`/api/users/${S.u.id}/friends`),
+        api(`/api/recommendations/${S.u.id}/people?limit=32`)
+      ]);
+
+      const friendIds = new Set((friends||[]).map(f=>f.id));
+      const suggested = (recommended||[]).filter(p=>!friendIds.has(p.user.id));
+
+      const friendsSection = friends.length
+        ? friends.map(f=>`<article class="card">
+            <div class="row"><div><div class="name" style="font-size:15px">${f.display_name}</div><div class="meta">${f.neighborhood||"Austin"} - ${f.archetype||"explorer"}</div></div><span class="pill ok">Friend</span></div>
+            <div class="actions"><button class="btn main" onclick="openPairPlanner('${f.id}')">Suggest Places</button><button class="btn" onclick="openPersonProfile('${f.id}')">View Profile</button><button class="btn bad" onclick="removeFriend('${f.id}')">Remove Friend</button></div>
+          </article>`).join("")
+        : '<div class="empty">No friends added yet. Add people from recommendations below.</div>';
+
+      const suggestedSection = suggested.length
+        ? suggested.map(p=>`<article class="card">
+            <div class="row"><div><div class="name" style="font-size:15px">${p.user.display_name}</div><div class="meta">${p.user.neighborhood||"Austin"} - ${p.user.archetype||"explorer"} - match ${Math.round((p.compatibility||0)*100)}%</div></div><span class="pill">${p.relationship}</span></div>
+            ${p.narrative?`<div class="note">${p.narrative}</div>`:""}
+            <div class="pills">${(p.shared_concepts||[]).slice(0,4).map(c=>`<span class="pill">${c}</span>`).join("")}</div>
+            <div class="actions"><button class="btn good" onclick="addFriend('${p.user.id}')">Add Friend</button><button class="btn main" onclick="openPairPlanner('${p.user.id}')">Suggest Places</button><button class="btn" onclick="openPersonProfile('${p.user.id}')">View Profile</button></div>
+          </article>`).join("")
+        : '<div class="empty">No new people to recommend right now.</div>';
+
+      E.content.innerHTML=`
+        <section class="section"><div class="title">Your Friends</div><div class="sub">Click Suggest Places to get pair-personalized venue picks and book directly.</div><div class="cards">${friendsSection}</div></section>
+        <section class="section"><div class="title">Recommended People To Meet</div><div class="sub">Ranked by social + taste compatibility. Add as friends, then plan or book together.</div><div class="cards">${suggestedSection}</div></section>
+      `;
+    }
+
+    async function renderBookings(){
+      const rows=await api(`/api/bookings/user/${S.u.id}`);
+      if(!rows.length){E.content.innerHTML='<div class="empty">No bookings yet. Auto-booked plans appear here.</div>';return;}
+      const venues={};async function v(id){if(!venues[id])venues[id]=api(`/api/venues/${id}`).catch(()=>({name:"Unknown"}));return venues[id];}
+      let html='<div class="cards">';
+      for(const b of rows){
+        const venue=await v(b.venue_id);
+        const manualActions = b.manual_review_required && b.organizer_id===S.u.id
+          ? `<div class="actions"><button class="btn good" onclick="manualReview('${b.id}','confirm')">Confirm Manually</button><button class="btn" onclick="manualReview('${b.id}','retry_provider')">Retry Provider</button><button class="btn bad" onclick="manualReview('${b.id}','cancel')">Cancel Booking</button></div>`
+          : "";
+        html+=`<article class="card">
+          <div class="row"><div><div class="name">${venue.name}</div><div class="meta">${b.reservation_date} ${b.reservation_time} - party ${b.party_size}</div></div><span class="pill ${b.status==="confirmed"?"ok":b.status==="needs_manual_review"?"hot":""}">${b.status}</span></div>
+          <div class="pills">${b.confirmation_code?`<span class="pill ok">Code ${b.confirmation_code}</span>`:'<span class="pill hot">No confirmation code</span>'}<span class="pill">${b.booking_method}</span>${b.manual_review_required?'<span class="pill hot">Manual review</span>':""}</div>
+          ${b.exception_reason?`<div class="note">Exception: ${b.exception_reason}</div>`:""}
+          <div class="pills">${(b.agent_log||[]).map(l=>`<span class="pill">${l.step||"step"}</span>`).join("")}</div>
+          ${manualActions}
+        </article>`;
+      }
+      html+='</div>';E.content.innerHTML=html;
+    }
+
+    async function renderTaste(){
+      const [profile,user,recs]=await Promise.all([api(`/api/embeddings/taste-profile/${S.u.id}`),api(`/api/users/${S.u.id}`),api(`/api/recommendations/${S.u.id}?limit=6&time_slot=${S.slot}`)]);
+      const bars=(profile.top_concepts||[]).map(c=>bar(c.label,c.normalized)).join("")||'<div class="empty">No concept activations yet.</div>';
+      const drift = Number(profile.latest_drift||0);
+      const driftPct = Math.round(drift*10000)/100;
+      const recentChanges=(profile.concept_changes||[]).slice(0,6);
+      E.content.innerHTML=`
+        <div class="taste">
+          <article class="card"><div class="row"><img class="avatar" src="${user.avatar_url||`https://api.dicebear.com/7.x/adventurer/svg?seed=${user.username}`}" /><div><div class="name">${user.display_name}</div><div class="meta">${user.neighborhood||"Austin"} • ${user.archetype||"explorer"} • age ${user.age}</div></div></div><div class="pills">${(user.cuisine_preferences||[]).slice(0,5).map(x=>`<span class="pill">${x}</span>`).join("")}</div><div class="note">${profile.narrative||"Interact to enrich your profile."}</div></article>
+          <article class="card"><div class="title">Taste DNA</div><div class="sub">Human-readable latent factors from your embedding.</div>${bars}</article>
+        </div>
+        <section class="section" style="margin-top:12px"><div class="title">Recent Taste Shift</div><div class="sub">Updated: ${profile.updated_at||"n/a"} • Drift: ${driftPct}%</div>
+          ${recentChanges.length?`<div class="pills">${recentChanges.map(c=>`<span class="pill ${c.direction==="up"?"ok":"hot"}">${c.direction==="up"?"+":"-"} ${c.label} ${Math.abs((c.delta||0)*100).toFixed(2)}%</span>`).join("")}</div>`:'<div class="empty">No recent concept changes yet. Create a booking or interact with venues.</div>'}
+        </section>
+        <section class="section" style="margin-top:12px"><div class="title">Explainable Recommendations</div><div class="cards">${recs.map(r=>`<article class="card"><div class="row"><div><div class="name" style="font-size:15px">${r.venue.name}</div><div class="meta">${r.venue.category} • ${r.venue.neighborhood||r.venue.city}</div></div><div class="score">${Math.round(r.score*100)}%</div></div><div class="note">${r.explanation?.narrative||"Latent similarity recommendation."}</div><div class="pills">${(r.explanation?.reasons||[]).map(x=>`<span class="pill">${x.label}</span>`).join("")}</div></article>`).join("")}</div></section>
+      `;
+    }
+
+    async function renderTrends(){
+      const rows=await api(`/api/analytics/trending?limit=12&time_slot=${S.slot}&target_date=${S.date}`);
+      if(!rows.length){E.content.innerHTML='<div class="empty">No trend data available.</div>';return;}
+      E.content.innerHTML=`<div class="cards">${rows.map((r,i)=>`<article class="card">
+        <div class="row"><div><div class="name">${i+1}. ${r.venue.name}</div><div class="meta">${r.venue.category} • ${r.venue.neighborhood||r.venue.city}</div></div><div class="score">${Math.round(r.trend_score*100)}%</div></div>
+        ${bar("Momentum",Math.min(1,Math.abs(r.momentum)))}<div class="pills"><span class="pill">Intent ${r.active_interests}</span><span class="pill hot">Predicted ${r.predicted_attendance}</span></div>
+        <div class="actions"><button class="btn main" onclick="openInvite('${r.venue.id}','${(r.venue.name||"").replace(/'/g,"\\'")}')">Plan Here</button></div>
+      </article>`).join("")}</div>`;
+    }
+
+    async function interest(venueId,date=null,slot=null,silent=false){
+      try{
+        const slotHint = slotFromTime(slot || S.time || "19:00");
+        await post("/api/interests",{user_id:S.u.id,venue_id:venueId,preferred_date:date||S.date,preferred_time_slot:slotHint,flexible_date:true,flexible_group_size:true,min_group_size:2,max_group_size:8,intent_strength:.72,source:"ui"});
+        await post("/api/analytics/track",{user_id:S.u.id,venue_id:venueId,interaction_type:"intent",source:"discover",context:{from:"ui_interest"}});
+        if(!silent)showToast("Intent saved and embedding updated");
+      }catch(_){if(!silent)showToast("Failed to save intent",true);}
+    }
+
+    async function signal(venueId){
+      try{await post("/api/analytics/track",{user_id:S.u.id,venue_id:venueId,interaction_type:"save",source:"discover",context:{from:"save_button"}});showToast("Saved signal and updated profile");}
+      catch(_){showToast("Failed to save signal",true);}
+    }
+
+    async function bookSolo(venueId,venueName="this venue",dateVal=null,slotVal=null){
+      const reservationDate = dateVal || S.date || today();
+      const bookingTime = normalizeTime(slotVal || S.time || "19:00");
+      const approved = confirm(`Confirm solo booking at ${venueName} on ${reservationDate} (${bookingTime})?`);
+      if(!approved)return {cancelled:true};
+      try{
+        const res = await post("/api/bookings/solo",{
+          user_id:S.u.id,
+          venue_id:venueId,
+          reservation_date:reservationDate || null,
+          time_slot:bookingTime
+        });
+        if(res.status==="confirmed")showToast("Solo booking confirmed");
+        else showToast("Solo booking created, manual review may be needed",true);
+        S.tab="bookings";
+        qa(".tab",E.nav).forEach(x=>x.classList.toggle("active",x.dataset.tab==="bookings"));
+        await render();
+        return res;
+      }catch(_){
+        showToast("Failed to create solo booking",true);
+        return null;
+      }
+    }
+
+    async function openInvite(venueId,venueName){
+      const people=await api(`/api/embeddings/people/${S.u.id}?limit=28`);
+      const wrap=document.createElement("div");wrap.className="modal-wrap";
+      wrap.innerHTML=`<div class="modal">
+        <div class="title">Plan Meetup: ${venueName}</div><div class="sub">Auto booking triggers when all invitees respond and accepted attendees hit threshold.</div>
+        <div class="controls"><input id="mDate" type="date" class="ctl" value="${S.date||today()}" /><input id="mTime" type="time" class="ctl" value="${S.time||"19:00"}" /><select id="mTh" class="ctl"><option value="2">Threshold 2</option><option value="3" selected>Threshold 3</option><option value="4">Threshold 4</option></select></div>
+        <div class="picklist">${people.map(p=>`<div class="pick" data-id="${p.user.id}"><div><div>${p.user.display_name}</div><small>${p.user.neighborhood||"Austin"} • ${Math.round((p.similarity||0)*100)}% • ${p.relationship}</small></div><span class="pill">${p.relationship}</span></div>`).join("")}</div>
+        <div class="actions"><button class="btn" id="solo">Book Solo</button><button class="btn main" id="send">Send Invites</button><button class="btn" id="close">Close</button></div>
+      </div>`;
+      E.modal.appendChild(wrap);const selected=new Set();
+      q(".picklist",wrap).onclick=(e)=>{const item=e.target.closest(".pick");if(!item)return;const id=item.dataset.id;if(selected.has(id)){selected.delete(id);item.classList.remove("selected");}else{selected.add(id);item.classList.add("selected");}};
+      q("#close",wrap).onclick=()=>wrap.remove();wrap.onclick=e=>{if(e.target===wrap)wrap.remove();};
+      q("#solo",wrap).onclick=async()=>{
+        const res = await bookSolo(venueId,venueName,q("#mDate",wrap).value,q("#mTime",wrap).value);
+        if(res && !res.cancelled)wrap.remove();
+      };
+      q("#send",wrap).onclick=async()=>{
+        if(!selected.size){showToast("Select at least one invitee",true);return;}
+        const dateVal=q("#mDate",wrap).value||S.date||today();
+        const bookingTime=normalizeTime(q("#mTime",wrap).value||S.time||"19:00");
+        const approved = confirm(`Send group invites for ${venueName} on ${dateVal} (${bookingTime})? Auto-booking will run after all responses and threshold confirmation.`);
+        if(!approved)return;
+        try{
+          await post("/api/invitations/send",{from_user_id:S.u.id,to_user_ids:[...selected],venue_id:venueId,proposed_date:q("#mDate",wrap).value||null,proposed_time_slot:bookingTime,threshold_count:Number(q("#mTh",wrap).value),message:"Auto planning via Luna."});
+          await interest(venueId,q("#mDate",wrap).value,bookingTime,true);showToast(`Invites sent to ${selected.size} people`);wrap.remove();await refreshPending();S.tab="invites";qa(".tab",E.nav).forEach(x=>x.classList.toggle("active",x.dataset.tab==="invites"));await render();
+        }catch(_){showToast("Failed to send invites",true);}
+      };
+    }
+
+    async function respond(invId,status){
+      if(status==="accepted"){
+        const approved = confirm("Accepting this invite can trigger automatic group booking once threshold is met. Continue?");
+        if(!approved)return;
+      }
+      try{
+        const res=await post(`/api/invitations/${invId}/respond`,{status});
+        if(res.auto_booking_state?.status==="auto_booked")showToast("Auto booking confirmed");
+        else if(res.auto_booking_state?.status==="exception")showToast("Group entered exception state",true);
+        else showToast(`Invite ${status}`);
+        await refreshPending();await renderInvites();await renderSummary();
+      }catch(_){showToast("Could not submit response",true);}
+    }
+
+    async function resolve(groupId,action){
+      try{await post(`/api/invitations/groups/${groupId}/resolve-exception`,{action});showToast(action==="retry"?"Retry triggered":"Group cancelled");await renderInvites();await renderSummary();}
+      catch(_){showToast("Failed to resolve exception",true);}
+    }
+
+
+
+    async function addFriend(friendId){
+      try{
+        await post(`/api/users/${S.u.id}/friends/${friendId}`);
+        showToast("Friend added");
+        await renderFriends();
+      }catch(_){
+        showToast("Could not add friend",true);
+      }
+    }
+
+    async function removeFriend(friendId){
+      try{
+        const r = await fetch(`/api/users/${S.u.id}/friends/${friendId}`,{method:"DELETE"});
+        if(!r.ok)throw new Error();
+        showToast("Friend removed");
+        await renderFriends();
+      }catch(_){
+        showToast("Could not remove friend",true);
+      }
+    }
+
+    async function openPairPlanner(personId,personName=null){
+      try{
+        const [person,pairRecs] = await Promise.all([
+          api(`/api/users/${personId}`),
+          api(`/api/recommendations/${S.u.id}/pair/${personId}?limit=12&time_slot=${S.slot}`)
+        ]);
+        personName = personName || person.display_name || "Friend";
+
+        if(!pairRecs.length){
+          showToast("No pair suggestions found right now",true);
+          return;
+        }
+
+        const wrap=document.createElement("div");
+        wrap.className="modal-wrap";
+        wrap.innerHTML=`<div class="modal">
+          <div class="title">Plan with ${personName}</div>
+          <div class="sub">Pair recommendations tuned to both embeddings. Choose a place, then invite or book now.</div>
+          <div class="picklist">${pairRecs.map(r=>`<div class="pick" data-vid="${r.venue.id}">
+            <div>
+              <div>${r.venue.name}</div>
+              <small>${r.venue.category} - ${r.venue.neighborhood||r.venue.city} - match ${Math.round((r.score||0)*100)}% - ${r.distance_km?.user||0}km / ${r.distance_km?.other||0}km</small>
+              <small>${r.narrative||""}</small>
+            </div>
+            <span class="pill">${r.relationship||"pair"}</span>
+          </div>`).join("")}</div>
+          <div class="controls">
+            <input id="pfDate" type="date" class="ctl" value="${S.date||today()}" />
+            <input id="pfTime" type="time" class="ctl" value="${S.time||"19:00"}" />
+          </div>
+          <div class="actions">
+            <button class="btn main" id="pfInvite">Send Invite</button>
+            <button class="btn good" id="pfBook">Book Now</button>
+            <button class="btn" id="pfClose">Close</button>
+          </div>
+        </div>`;
+        E.modal.appendChild(wrap);
+
+        let selectedVenue = pairRecs[0].venue.id;
+        const picks = qa(".pick",wrap);
+        if(picks.length)picks[0].classList.add("selected");
+        q(".picklist",wrap).onclick = (e)=>{
+          const item = e.target.closest(".pick");
+          if(!item)return;
+          qa(".pick",wrap).forEach(x=>x.classList.remove("selected"));
+          item.classList.add("selected");
+          selectedVenue = item.dataset.vid;
+        };
+
+        q("#pfClose",wrap).onclick = ()=>wrap.remove();
+        wrap.onclick = (e)=>{if(e.target===wrap)wrap.remove();};
+
+        q("#pfInvite",wrap).onclick = async()=>{
+          if(!selectedVenue){showToast("Pick a venue first",true);return;}
+          const dateVal = q("#pfDate",wrap).value || null;
+          const bookingTime = normalizeTime(q("#pfTime",wrap).value||S.time||"19:00");
+          const selectedVenueName = (pairRecs.find(r=>r.venue.id===selectedVenue)?.venue?.name) || "selected venue";
+          const approved = confirm(`Send invite to ${personName} for ${selectedVenueName} on ${dateVal||S.date||today()} (${bookingTime})? Auto-booking will trigger after responses.`);
+          if(!approved)return;
+          try{
+            await post("/api/invitations/send",{
+              from_user_id:S.u.id,
+              to_user_ids:[personId],
+              venue_id:selectedVenue,
+              proposed_date:dateVal,
+              proposed_time_slot:bookingTime,
+              threshold_count:2,
+              message:"Suggested by pair taste matching."
+            });
+            await interest(selectedVenue,dateVal,bookingTime,true);
+            showToast("Invite sent");
+            wrap.remove();
+            await refreshPending();
+            await renderSummary();
+          }catch(_){
+            showToast("Failed to send invite",true);
+          }
+        };
+
+        q("#pfBook",wrap).onclick = async()=>{
+          if(!selectedVenue){showToast("Pick a venue first",true);return;}
+          const dateVal = q("#pfDate",wrap).value || null;
+          const bookingTime = normalizeTime(q("#pfTime",wrap).value||S.time||"19:00");
+          const selectedVenueName = (pairRecs.find(r=>r.venue.id===selectedVenue)?.venue?.name) || "selected venue";
+          const approved = confirm(`Confirm group booking at ${selectedVenueName} with ${personName} on ${dateVal||S.date||today()} (${bookingTime})?`);
+          if(!approved)return;
+          try{
+            const res = await post("/api/bookings/direct",{
+              organizer_id:S.u.id,
+              friend_id:personId,
+              venue_id:selectedVenue,
+              reservation_date:dateVal,
+              time_slot:bookingTime
+            });
+            if(res.status==="confirmed")showToast("Booking confirmed");
+            else showToast("Booking created, manual review may be needed",true);
+            wrap.remove();
+            S.tab="bookings";
+            qa(".tab",E.nav).forEach(x=>x.classList.toggle("active",x.dataset.tab==="bookings"));
+            await render();
+          }catch(_){
+            showToast("Failed to create booking",true);
+          }
+        };
+      }catch(_){
+        showToast("Could not open pair planner",true);
+      }
+    }
+
+    async function openInviteForPerson(personId,personName=null){
+      return openPairPlanner(personId,personName);
+    }
+
+    async function manualReview(bookingId,action){
+      let confirmationCode = null;
+      if(action==="confirm"){
+        const input = prompt("Optional confirmation code (leave blank to auto-generate):", "");
+        if(input===null)return;
+        confirmationCode = input.trim() || null;
+      }
+      try{
+        const result = await post(`/api/bookings/${bookingId}/manual-review`,{user_id:S.u.id,action,confirmation_code:confirmationCode});
+        if(result.status==="confirmed")showToast("Manual review confirmed booking");
+        else if(result.status==="still_requires_manual_review")showToast("Retry failed, still needs manual review",true);
+        else if(result.status==="cancelled")showToast("Booking cancelled");
+        else showToast("Manual review action applied");
+        await renderBookings();
+        await renderSummary();
+      }catch(err){
+        showToast("Manual review action failed",true);
+      }
+    }
+
+    window.openInvite=openInvite;window.interest=interest;window.bookSolo=bookSolo;window.signal=signal;window.respond=respond;window.resolve=resolve;window.manualReview=manualReview;window.addFriend=addFriend;window.removeFriend=removeFriend;window.openInviteForPerson=openInviteForPerson;window.openPairPlanner=openPairPlanner;window.openPersonProfile=openPersonProfile;
+    init();
+  </script>
+</body>
+</html>
